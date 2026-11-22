@@ -1,0 +1,71 @@
+// models/Medico.js
+const Conexion = require('../config/Conexion');
+
+class Medico {
+    constructor(nombre, especialidad, telefono, correo, direccion) {
+        this.nombre = nombre;
+        this.especialidad = especialidad;
+        this.telefono = telefono;
+        this.correo = correo;
+        this.direccion = direccion;
+    }
+
+    static async getAll() {
+        const conexion = new Conexion();
+        await conexion.conectar();
+        const client = conexion.getClient();
+        const result = await client.query('SELECT * FROM medico ORDER BY id');
+        await client.end();
+        return result.rows;
+    }
+
+    static async getById(id) {
+        const conexion = new Conexion();
+        await conexion.conectar();
+        const client = conexion.getClient();
+        const result = await client.query('SELECT * FROM medico WHERE id = $1', [id]);
+        await client.end();
+        return result.rows[0];
+    }
+
+    async save() {
+        const conexion = new Conexion();
+        await conexion.conectar();
+        const client = conexion.getClient();
+        const query = `
+            INSERT INTO medico (nombre, especialidad, telefono, correo, direccion)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id
+        `;
+        const values = [this.nombre, this.especialidad, this.telefono, this.correo, this.direccion];
+        const result = await client.query(query, values);
+        this.id = result.rows[0].id;
+        await client.end();
+        return this;
+    }
+
+    static async update(id, datos) {
+        const conexion = new Conexion();
+        await conexion.conectar();
+        const client = conexion.getClient();
+        const fields = Object.keys(datos);
+        const values = Object.values(datos);
+        const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+        const query = `UPDATE medico SET ${setClause} WHERE id = $${fields.length + 1}`;
+        values.push(id);
+        await client.query(query, values);
+        await client.end();
+        return { id, ...datos };
+    }
+
+    static async delete(id) {
+        const conexion = new Conexion();
+        await conexion.conectar();
+        const client = conexion.getClient();
+        const result = await client.query('DELETE FROM medico WHERE id = $1', [id]);
+        await client.end();
+        return result.rowCount > 0;
+    }
+}
+
+module.exports = Medico;
